@@ -1,0 +1,78 @@
+import com.fasterxml.jackson.core.JsonParseException
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.JsonMappingException
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.gradle.internal.os.OperatingSystem
+
+buildscript {
+    repositories { mavenCentral() }
+    dependencies {
+        classpath 'com.fasterxml.jackson.core:jackson-core:2.9.2'
+        classpath 'com.fasterxml.jackson.core:jackson-annotations:2.9.2'
+        classpath 'com.fasterxml.jackson.core:jackson-databind:2.9.2'
+    }
+}
+
+task build {
+    doLast {
+        build(project.version.toString())
+    }
+}
+
+task push {
+    doLast {
+        push(project.version.toString())
+    }
+}
+
+def build(String version) {
+    println("Start build for '$version'")
+    def arr = version.split("-", 2)
+    File file = new File("versions.json")
+    def mapping = readJsonObject(file)
+    def imageName = arr[0]
+    def tag = arr[1]
+    def type = ((Map<String, Object>) mapping.get(imageName)).get(tag).toString()
+    if (type == "null") {
+        throw new IllegalArgumentException("$version is unknown version.")
+    }
+    println("Found base image type '$type' for image: '$imageName:$tag'")
+    println("Start building image.")
+    runCommand("cd /d \"${project.rootDir}/Dockerfiles/$imageName/$type/\" & docker build -t portalmc/$imageName:mc-$tag .")
+}
+
+def push(String version) {
+    println("Start push for '$version'")
+    def arr = version.split("-", 2)
+    def imageName = arr[0]
+    def tag = arr[1]
+    println("Start pushing image.")
+    runCommand("docker push portalmc/$imageName:mc-$tag")
+}
+
+static def runCommand(String commandRaw) {
+    def command
+    if (isWindows()) {
+        command = ["cmd", "/c", "\"$commandRaw\""]
+    } else {
+        command = ["sh", "-c", commandRaw]
+    }
+    def p = command.execute()
+    BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))
+    String line
+    while ((line = reader.readLine()) != null) {
+        println(line)
+    }
+    def exitValue = p.waitFor()
+    if (exitValue != 0) {
+        throw new RuntimeException("An error has occurred while running Docker. ${p.err.text}")
+    }
+}
+
+static def isWindows() {
+    return OperatingSystem.current().isWindows()
+}
+
+static Map<String, Object> readJsonObject(File json) throws JsonMappingException, JsonParseException, IOException {
+    return new ObjectMapper().readValue(json, new TypeReference<Map<String, Object>>() {})
+}
