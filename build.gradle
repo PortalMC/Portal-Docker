@@ -38,7 +38,11 @@ def build(String version) {
     }
     println("Found base image type '$type' for image: '$imageName:$tag'")
     println("Start building image.")
-    runCommand("cd /d \"${project.rootDir}/Dockerfiles/$imageName/$type/\" & docker build -t portalmc/$imageName:mc-$tag .")
+    if (isWindows()) {
+        runCommand("cd /d \"${project.rootDir}/Dockerfiles/$imageName/$type/\" & docker build -t portalmc/$imageName:mc-$tag .")
+    } else {
+        runCommand("cd \"${project.rootDir}/Dockerfiles/$imageName/$type/\"; docker build -t portalmc/$imageName:mc-$tag .")
+    }
 }
 
 def push(String version) {

@@ -1,4 +1,4 @@
-# portalmc/builder:mc-1.12.2-1-alpine
+# portalmc/builder:type-1
 
 FROM openjdk:8-jdk-alpine
 
@@ -14,6 +14,7 @@ RUN ["/bin/bash", "-c", " \
         touch build.sh && \
         chmod +x build.sh && \
         echo '#!/bin/bash' >> build.sh && \
+        echo set -eu >> build.sh && \
         echo cp -r /portal/src /portal/work >> build.sh && \
         echo cd /portal/work >> build.sh && \
         echo chmod +x ./gradlew >> build.sh && \
